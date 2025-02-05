@@ -61,3 +61,15 @@ def user_register(request):
 
 
 
+@login_required
+def edit_profile(request):
+    if request.method == 'POST':
+        form = UserEditForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your profile has been updated successfully!")
+            return redirect('home')
+    else:
+        form = UserEditForm(instance=request.user)
+
+    return render(request, 'account/profile_edit.html', {'form': form})

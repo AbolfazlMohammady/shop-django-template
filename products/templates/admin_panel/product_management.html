@@ -1,0 +1,53 @@
+{% extends "_base.html" %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>مدیریت محصولات</h2>
+    
+    <!-- پیام‌های موفقیت -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-success">{{ message }}</div>
+        {% endfor %}
+    {% endif %}
+
+    <!-- فرم افزودن محصول -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <h4>افزودن محصول جدید</h4>
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                {{ form|crispy}}
+                <button type="submit" class="btn btn-success">افزودن</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- لیست محصولات -->
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>عنوان</th>
+                <th>قیمت</th>
+                <th>وضعیت</th>
+                <th>تصویر</th>
+                <th>حذف</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+                <tr>
+                    <td>{{ product.title }}</td>
+                    <td>{{ product.price }} تومان</td>
+                    <td>{% if product.active %} ✅ فعال {% else %} ❌ غیرفعال {% endif %}</td>
+                    <td><img src="{{ product.image.url }}" width="50"></td>
+                    <td>
+                        <a href="{% url 'delete-product' product.id %}" class="btn btn-danger btn-sm">حذف</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

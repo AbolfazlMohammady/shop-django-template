@@ -1,3 +1,4 @@
+from django.contrib import messages
 from django.shortcuts import render, get_object_or_404 , redirect
 from django.contrib import messages
 from .models import Product, Category, Color, Discount , Order
@@ -7,11 +8,12 @@ from django.views import generic
 from django.contrib import messages
 from django.utils.translation import gettext_lazy as _
 from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse
+from django.contrib.auth.decorators import user_passes_test
+
 
 
 from .models import Product, Category, Color
-from .forms import CommentForm
+from .forms import CommentForm ,ProductForm  
 
 
 class ProductListView(generic.ListView):
@@ -22,7 +24,6 @@ class ProductListView(generic.ListView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        # محاسبه قیمت با تخفیف برای هر محصول
         for product in context['products']:
             if product.discount:
                 discount = product.discount.discount
@@ -38,17 +39,13 @@ class ProductListView(generic.ListView):
 def product_detail_view(request, pk):
     product = get_object_or_404(Product, pk=pk)
 
-    # دریافت نظرات محصول
     product_comment = product.comments.filter(active=True).order_by('-datetime_created')
     
-    # دسته‌بندی‌ها و رنگ‌های مرتبط با محصول
     category_product = Category.objects.filter(products=product)
     color_product = Color.objects.filter(products=product)
     
-    # محاسبه قیمت تخفیف‌دار
     discount_price = product.get_discount_price()
 
-    # بررسی فرم نظرات
     if request.method == "POST":
         comment_form = CommentForm(request.POST)
         if comment_form.is_valid():
@@ -58,7 +55,6 @@ def product_detail_view(request, pk):
             new_comment.save()
             messages.success(request, _('Comment Successfully created'))
 
-            # بازنشانی فرم نظرات پس از ذخیره موفقیت‌آمیز
             comment_form = CommentForm()
     else:
         comment_form = CommentForm()
@@ -80,18 +76,24 @@ def product_detail_view(request, pk):
 @login_required
 def create_order(request, product_id):
     product = get_object_or_404(Product, pk=product_id)
+    
     if request.method == 'POST':
-        quantity = int(request.POST['quantity'])
+        quantity = int(request.POST.get('quantity', 1))  
         total_price = product.price * quantity
+        
         order = Order.objects.create(
             user=request.user,
             product=product,
             quantity=quantity,
             total_price=total_price
         )
+
+        messages.success(request, "خرید شما با موفقیت انجام شد!")
         
-        return redirect('product-detail')
-    return redirect('product-detail')
+        return redirect('product-detail', pk=product.id)
+
+    return redirect('product-detail', pk=product.id)
+
 
 @login_required
 def user_orders(request):
@@ -106,3 +108,35 @@ def product_search(request):
         results = Product.objects.filter(title__icontains=query)  # جستجو بر اساس نام محصول
     return render(request, 'products/product_search.html', {'results': results, 'query': query})
 
+
+
+def is_superadmin(user):
+    return user.is_superuser
+
+@user_passes_test(is_superadmin)
+def product_management(request):
+    products = Product.objects.all() 
+    if request.method == 'POST':
+        form = ProductForm(request.POST, request.FILES)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "✅ محصول با موفقیت اضافه شد!")
+            return redirect('product-management')
+    else:
+        form = ProductForm()
+
+    return render(request, 'admin_panel/product_management.html', {'products': products, 'form': form})
+
+@user_passes_test(is_superadmin)
+def delete_product(request, product_id):
+    product = get_object_or_404(Product, id=product_id)
+    product.delete()
+    messages.success(request, "❌ محصول با موفقیت حذف شد!")
+    return redirect('product-management')
+
+
+def category_products(request, category_id):
+    category = get_object_or_404(Category, id=category_id)
+    products = Product.objects.filter(category=category)
+
+    return render(request, 'products/category_products.html', {'category': category, 'products': products})

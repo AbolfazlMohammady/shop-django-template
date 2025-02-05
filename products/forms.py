@@ -13,3 +13,9 @@ class CommentForm(forms.ModelForm):
     class Meta:
         model= Comment
         fields= ('body', 'stars',)
+
+
+class ProductForm(forms.ModelForm):
+    class Meta:
+        model = Product
+        fields = ['title', 'description', 'short_description', 'price', 'active', 'image', 'size', 'weight', 'category', 'color', 'discount']
